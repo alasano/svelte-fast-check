@@ -6,7 +6,9 @@ Up to 24x faster type checker for Svelte/SvelteKit projects. Built with svelte2t
 
 ## Motivation
 
-As our project grew, `svelte-check` became slow. We needed incremental builds and typescript-go support, but `svelte-check` has many considerations (Language Server compatibility, etc.) that make official support take time.
+As my project grew, `svelte-check` became slow. I wanted to try incremental builds and typescript-go.
+
+`svelte-check` has a lot to consider - Language Server compatibility, cross-platform support, and more - so adopting experimental features like tsgo isn't easy. Official support will take time, so I built this to use in the meantime.
 
 See also:
 
@@ -54,11 +56,12 @@ bun svelte-fast-check --incremental
 
 ### CLI Options
 
-| Option            | Short | Description                                            |
-| ----------------- | ----- | ------------------------------------------------------ |
-| `--incremental`   | `-i`  | Convert only changed files, use tsgo incremental build |
-| `--raw`           | `-r`  | Show raw output without filtering/mapping              |
-| `--config <path>` | `-c`  | Specify config file path                               |
+| Option                 | Short | Description                                            |
+| ---------------------- | ----- | ------------------------------------------------------ |
+| `--incremental`        | `-i`  | Convert only changed files, use tsgo incremental build |
+| `--no-svelte-warnings` |       | Skip Svelte compiler warnings (type check only)        |
+| `--raw`                | `-r`  | Show raw output without filtering/mapping              |
+| `--config <path>`      | `-c`  | Specify config file path                               |
 
 ## Configuration
 
@@ -78,22 +81,17 @@ export default {
 ## How It Works
 
 ```
-.svelte files
-     ↓
-[svelte2tsx] parallel conversion
-     ↓
-.svelte.tsx files (.fast-check/tsx/)
-     ↓
-[tsgo] type check
-     ↓
-error list
-     ↓
-[filter] remove false positives from svelte2tsx generated code
-     ↓
-[map] convert to original .svelte locations via sourcemap
-     ↓
-final output
+                    ┌─→ svelte2tsx → tsgo → filter → map ─────→┐
+.svelte files ──────┤                                          ├──→ merged diagnostics
+                    └─→ svelte.compile (warnings) → filter ───→┘
 ```
+
+Two pipelines run in parallel:
+
+1. **Type checking**: svelte2tsx converts `.svelte` to `.tsx`, then tsgo type-checks
+2. **Compiler warnings**: `svelte.compile({ generate: false })` collects Svelte-specific warnings
+
+Both results are merged and displayed together.
 
 ### Cache Structure
 
@@ -101,16 +99,15 @@ final output
 .fast-check/
 ├── tsx/           # converted .svelte.tsx files
 ├── maps/          # sourcemap files
+├── warnings/      # cached svelte compiler warnings (JSON)
 ├── tsconfig.json  # generated tsconfig
 └── .tsbuildinfo   # tsgo incremental build info
 ```
 
 ## Non-Goals
 
-`svelte-fast-check` focuses only on fast type checking. The following features are not supported:
+`svelte-fast-check` focuses on fast type checking and compiler warnings. The following features are not supported:
 
-- **Svelte compiler warnings** - `state_referenced_locally`, `css-unused-selector`, etc.
-- **CSS diagnostics** - style-related checks
 - **Language Server** - IDE autocompletion, hover info, go to definition, etc.
 - **Watch mode** - file change detection and auto-rerun
 

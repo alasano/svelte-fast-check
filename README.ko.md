@@ -6,7 +6,9 @@
 
 ## 모티베이션
 
-프로젝트가 커지면서 `svelte-check`가 느려졌습니다. incremental 빌드와 typescript-go 지원이 필요했는데, `svelte-check`가 고려해야 할 것들(Language Server 호환성 등)이 많아 공식 지원까지는 시간이 걸릴 것 같아 직접 만들었습니다.
+프로젝트가 커지니까 `svelte-check`가 느려졌습니다. incremental 빌드랑 typescript-go 로 개선해보고 싶어졌습니다.
+
+`svelte-check`는 Language Server 호환성, 크로스 플랫폼 지원 등 신경 쓸 게 많아서 tsgo 같은 실험적 기능을 바로 도입하긴 어렵습니다. 공식 지원에는 시간이 걸릴 수 밖에 없어서, 그동안 쓸 수 있는 프로젝트로 만들었습니다.
 
 참고:
 
@@ -54,11 +56,12 @@ bun svelte-fast-check --incremental
 
 ### CLI 옵션
 
-| 옵션              | 단축 | 설명                                                       |
-| ----------------- | ---- | ---------------------------------------------------------- |
-| `--incremental`   | `-i` | 변경된 파일만 변환하고, tsgo incremental 빌드를 사용합니다 |
-| `--raw`           | `-r` | 필터링/매핑 없이 원시 출력을 표시합니다                    |
-| `--config <path>` | `-c` | 설정 파일 경로를 지정합니다                                |
+| 옵션                   | 단축 | 설명                                                       |
+| ---------------------- | ---- | ---------------------------------------------------------- |
+| `--incremental`        | `-i` | 변경된 파일만 변환하고, tsgo incremental 빌드를 사용합니다 |
+| `--no-svelte-warnings` |      | Svelte 컴파일러 경고를 건너뜁니다 (타입 체크만 실행)       |
+| `--raw`                | `-r` | 필터링/매핑 없이 원시 출력을 표시합니다                    |
+| `--config <path>`      | `-c` | 설정 파일 경로를 지정합니다                                |
 
 ## 설정
 
@@ -78,22 +81,17 @@ export default {
 ## 동작 원리
 
 ```
-.svelte 파일들
-     ↓
-[svelte2tsx] 병렬 변환
-     ↓
-.svelte.tsx 파일들 (.fast-check/tsx/)
-     ↓
-[tsgo] 타입 체크
-     ↓
-에러 목록
-     ↓
-[필터링] svelte2tsx 생성 코드의 false positive 제거
-     ↓
-[매핑] sourcemap으로 원본 .svelte 위치로 변환
-     ↓
-최종 결과 출력
+                    ┌─→ svelte2tsx → tsgo → filter → map ─────→┐
+.svelte 파일들 ─────┤                                          ├──→ 통합된 진단 결과
+                    └─→ svelte.compile (warnings) → filter ───→┘
 ```
+
+두 파이프라인이 병렬로 실행됩니다:
+
+1. **타입 체크**: svelte2tsx가 `.svelte`를 `.tsx`로 변환 후 tsgo가 타입 체크
+2. **컴파일러 경고**: `svelte.compile({ generate: false })`로 Svelte 전용 경고 수집
+
+두 결과를 병합하여 함께 출력합니다.
 
 ### 캐시 구조
 
@@ -101,16 +99,15 @@ export default {
 .fast-check/
 ├── tsx/           # 변환된 .svelte.tsx 파일
 ├── maps/          # sourcemap 파일
+├── warnings/      # 캐시된 svelte 컴파일러 경고 (JSON)
 ├── tsconfig.json  # 생성된 tsconfig
 └── .tsbuildinfo   # tsgo incremental 빌드 정보
 ```
 
 ## 목적이 아닌 것
 
-`svelte-fast-check`는 타입 체크만 빠르게 하는 것이 목표입니다. 다음 기능은 지원하지 않습니다:
+`svelte-fast-check`는 빠른 타입 체크와 컴파일러 경고에 집중합니다. 다음 기능은 지원하지 않습니다:
 
-- **Svelte 컴파일러 경고** - `state_referenced_locally`, `css-unused-selector` 등 Svelte 전용 진단
-- **CSS 진단** - 스타일 관련 검사
 - **Language Server** - IDE 자동완성, hover 정보, go to definition 등
 - **Watch 모드** - 파일 변경 감지 및 자동 재실행
 
