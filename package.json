@@ -1,0 +1,57 @@
+{
+  "name": "svelte-fast-check",
+  "version": "0.1.0",
+  "description": "Up to 24x faster type checker for Svelte/SvelteKit projects using svelte2tsx + tsgo",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "svelte-fast-check": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@jridgewell/trace-mapping": "^0.3.25",
+    "@typescript/native-preview": "^7.0.0-dev.20250601",
+    "glob": "^11.0.0",
+    "svelte2tsx": "^0.7.34"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.0.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "svelte",
+    "sveltekit",
+    "typescript",
+    "type-checker",
+    "tsgo",
+    "typescript-go"
+  ],
+  "license": "MIT",
+  "author": "Song Jaehak <astralhpi@gmail.com> (https://github.com/astralhpi)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/astralhpi/svelte-fast-check.git"
+  },
+  "bugs": {
+    "url": "https://github.com/astralhpi/svelte-fast-check/issues"
+  },
+  "homepage": "https://github.com/astralhpi/svelte-fast-check#readme"
+}
