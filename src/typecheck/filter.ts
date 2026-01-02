@@ -7,7 +7,7 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
-import type { Diagnostic } from './types';
+import type { Diagnostic } from '../types';
 
 /** TS error codes to filter */
 const DiagnosticCode = {

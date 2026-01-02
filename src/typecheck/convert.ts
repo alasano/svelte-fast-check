@@ -12,7 +12,7 @@ import { readFile, writeFile, mkdir } from 'fs/promises';
 import { globSync } from 'glob';
 import { resolve, dirname, relative } from 'path';
 import { createRequire } from 'module';
-import type { ConversionResult, FastCheckConfig, SourceMapData } from './types';
+import type { ConversionResult, FastCheckConfig, SourceMapData } from '../types';
 
 // Get svelte2tsx package path (from svelte-fast-check's own dependencies)
 const require = createRequire(import.meta.url);
@@ -114,11 +114,9 @@ async function convertSvelteFileAsync(
       mode: 'ts',
     });
 
-    // Create output directory
+    // Create output directory (ignore EEXIST for race condition with Promise.all)
     const outputDir = dirname(outputPath);
-    if (!existsSync(outputDir)) {
-      await mkdir(outputDir, { recursive: true });
-    }
+    await mkdir(outputDir, { recursive: true }).catch(() => {});
 
     // Save .svelte.tsx file and sourcemap in parallel
     await Promise.all([
@@ -290,10 +288,10 @@ export interface GenerateTsconfigOptions {
 }
 
 /**
- * .fast-check/tsconfig.json 생성 (tsgo용)
+ * Generate .fast-check/tsconfig.json for tsgo
  *
- * 프로젝트의 tsconfig.json을 읽어서 기반으로 하고,
- * fast-check에 필요한 설정만 덮어씁니다.
+ * Reads the project's tsconfig.json as a base,
+ * and overrides only the settings required by fast-check.
  */
 export async function generateTsconfig(
   config: FastCheckConfig,

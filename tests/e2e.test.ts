@@ -177,6 +177,8 @@ describe('svelte-fast-check E2E', () => {
       expect(svelteWarnings.length).toBeGreaterThan(0);
       expect(svelteWarnings[0].originalFile).toContain('App.svelte');
       expect(svelteWarnings[0].originalLine).toBe(7);
+      // Column should be 1-based (17 points to 'c' in 'count')
+      expect(svelteWarnings[0].originalColumn).toBe(17);
       expect(svelteWarnings[0].severity).toBe('warning');
     });
 

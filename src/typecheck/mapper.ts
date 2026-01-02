@@ -7,10 +7,10 @@
 
 import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping';
 import { resolve } from 'path';
-import type { Diagnostic, MappedDiagnostic, SourceMapData } from './types';
+import type { Diagnostic, MappedDiagnostic, SourceMapData } from '../types';
 
-/** .fast-check folder path constants */
-const CACHE_ROOT = '.fast-check';
+/** Default .fast-check folder path */
+const DEFAULT_CACHE_ROOT = '.fast-check';
 const TSX_DIR = 'tsx';
 
 /** Store getter function pattern from svelte2tsx */
@@ -22,9 +22,17 @@ const TS_NO_OVERLOAD_MATCHES = 2769;
 /**
  * Extract original svelte path from tsx path
  * .fast-check/tsx/src/routes/+layout.svelte.tsx -> src/routes/+layout.svelte
+ *
+ * @param rootDir - Project root directory
+ * @param tsxPath - Path to .svelte.tsx file (relative or absolute)
+ * @param cacheDir - Cache directory name (default: '.fast-check')
  */
-export function tsxPathToOriginal(rootDir: string, tsxPath: string): string {
-  const cachePrefix = resolve(rootDir, CACHE_ROOT, TSX_DIR) + '/';
+export function tsxPathToOriginal(
+  rootDir: string,
+  tsxPath: string,
+  cacheDir: string = DEFAULT_CACHE_ROOT
+): string {
+  const cachePrefix = resolve(rootDir, cacheDir, TSX_DIR) + '/';
 
   if (tsxPath.startsWith(cachePrefix)) {
     // Absolute path case
@@ -33,7 +41,7 @@ export function tsxPathToOriginal(rootDir: string, tsxPath: string): string {
   }
 
   // Relative path case (tsc output)
-  const prefix = `${CACHE_ROOT}/${TSX_DIR}/`;
+  const prefix = `${cacheDir}/${TSX_DIR}/`;
   if (tsxPath.startsWith(prefix)) {
     const relativeTsx = tsxPath.slice(prefix.length);
     return relativeTsx.replace(/\.tsx$/, '');
@@ -45,17 +53,24 @@ export function tsxPathToOriginal(rootDir: string, tsxPath: string): string {
 
 /**
  * Map all diagnostics to original locations
+ *
+ * @param diagnostics - List of diagnostics to map
+ * @param sourcemaps - Map of tsx file paths to sourcemap data
+ * @param rootDir - Project root directory
+ * @param tsxContents - Optional map of tsx file contents (for store error detection)
+ * @param cacheDir - Cache directory name (default: '.fast-check')
  */
 export function mapDiagnostics(
   diagnostics: Diagnostic[],
   sourcemaps: Map<string, SourceMapData>,
   rootDir: string,
-  tsxContents?: Map<string, string>
+  tsxContents?: Map<string, string>,
+  cacheDir: string = DEFAULT_CACHE_ROOT
 ): MappedDiagnostic[] {
   const mapped: MappedDiagnostic[] = [];
 
   for (const d of diagnostics) {
-    const result = mapDiagnostic(d, sourcemaps, rootDir, tsxContents);
+    const result = mapDiagnostic(d, sourcemaps, rootDir, tsxContents, cacheDir);
     if (result) {
       mapped.push(result);
     }
@@ -71,7 +86,8 @@ function mapDiagnostic(
   d: Diagnostic,
   sourcemaps: Map<string, SourceMapData>,
   rootDir: string,
-  tsxContents?: Map<string, string>
+  tsxContents?: Map<string, string>,
+  cacheDir: string = DEFAULT_CACHE_ROOT
 ): MappedDiagnostic | null {
   // Only .svelte.tsx files need mapping
   if (!d.file.endsWith('.svelte.tsx')) {
@@ -89,7 +105,7 @@ function mapDiagnostic(
   const sourcemap = sourcemaps.get(absolutePath);
 
   // Calculate original svelte path
-  const originalFile = tsxPathToOriginal(rootDir, d.file);
+  const originalFile = tsxPathToOriginal(rootDir, d.file, cacheDir);
 
   if (!sourcemap) {
     // Without sourcemap, original location is unknown

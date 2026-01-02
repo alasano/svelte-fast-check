@@ -1,0 +1,178 @@
+/**
+ * Worker orchestration
+ *
+ * Runs typecheck and compiler workers in parallel
+ */
+
+import { Worker } from 'worker_threads';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+import { createRequire } from 'module';
+import type { FastCheckConfig, CheckResult } from './types';
+import type { TypeCheckInput, TypeCheckOutput } from './typecheck/worker';
+import type { CompilerInput, CompilerOutput } from './compiler/worker';
+import { countDiagnostics } from './typecheck/parser';
+import { printDiagnostics, printSummary, printRawDiagnostics } from './reporter';
+
+const require = createRequire(import.meta.url);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+export interface RunOptions {
+  /** Incremental mode (convert only changed files) */
+  incremental?: boolean;
+  /** Raw mode (output without filtering/mapping) */
+  raw?: boolean;
+  /** Quiet mode (suppress progress output) */
+  quiet?: boolean;
+  /** Enable svelte compiler warnings (default: true) */
+  svelteWarnings?: boolean;
+}
+
+/**
+ * Get worker file path (supports both dev and built environments)
+ */
+function getWorkerPath(pipeline: 'typecheck' | 'compiler'): string {
+  // In development: src/typecheck/worker.ts
+  // After build: dist/typecheck/worker.js
+  const jsPath = resolve(__dirname, `${pipeline}/worker.js`);
+  const tsPath = resolve(__dirname, `${pipeline}/worker.ts`);
+
+  // Prefer .js (built) if exists, otherwise .ts (dev)
+  try {
+    require.resolve(jsPath);
+    return jsPath;
+  } catch {
+    return tsPath;
+  }
+}
+
+/**
+ * Run a worker and return its result
+ */
+function runWorker<TInput, TOutput>(workerPath: string, input: TInput): Promise<TOutput> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(workerPath);
+
+    worker.on('message', (result: TOutput) => {
+      worker.terminate();
+      resolve(result);
+    });
+
+    worker.on('error', (error) => {
+      worker.terminate();
+      reject(error);
+    });
+
+    worker.on('exit', (code) => {
+      if (code !== 0) {
+        reject(new Error(`Worker stopped with exit code ${code}`));
+      }
+    });
+
+    worker.postMessage(input);
+  });
+}
+
+/**
+ * Run svelte-fast-check
+ */
+export async function run(config: FastCheckConfig, options: RunOptions = {}): Promise<CheckResult> {
+  const { incremental = false, raw = false, quiet = false, svelteWarnings = true } = options;
+  const startTime = performance.now();
+
+  const log = quiet ? () => {} : console.log.bind(console);
+
+  log('🔍 svelte-fast-check: Starting type check...\n');
+
+  // Resolve worker paths
+  const typeCheckWorkerPath = getWorkerPath('typecheck');
+  const compilerWorkerPath = getWorkerPath('compiler');
+
+  // Prepare worker inputs
+  const typeCheckInput: TypeCheckInput = { config, incremental, raw };
+  const compilerInput: CompilerInput = { config, incremental };
+
+  // Run workers in parallel
+  // In raw mode, skip compiler worker (only typecheck needed for debugging)
+  const runCompilerWorker = svelteWarnings && !raw;
+
+  const [typeCheckResult, compilerResult] = await Promise.all([
+    runWorker<TypeCheckInput, TypeCheckOutput>(typeCheckWorkerPath, typeCheckInput),
+    runCompilerWorker
+      ? runWorker<CompilerInput, CompilerOutput>(compilerWorkerPath, compilerInput)
+      : null,
+  ]);
+
+  const totalTime = Math.round(performance.now() - startTime);
+
+  // Check for worker errors
+  if (typeCheckResult.error) {
+    throw new Error(`TypeCheck worker failed: ${typeCheckResult.error}`);
+  }
+  if (compilerResult?.error) {
+    throw new Error(`Compiler worker failed: ${compilerResult.error}`);
+  }
+
+  if (raw) {
+    // Raw mode: only typecheck, no svelte warnings, no filter/map
+    const diagnostics = typeCheckResult.diagnostics;
+    const { errorCount, warningCount } = countDiagnostics(diagnostics);
+
+    if (!quiet && diagnostics.length > 0) {
+      log('📋 Diagnostics (raw):\n');
+      printRawDiagnostics(diagnostics);
+      log();
+    }
+
+    if (!quiet) {
+      log('─'.repeat(60));
+      if (errorCount === 0 && warningCount === 0) {
+        log('✅ No problems found');
+      } else {
+        const parts: string[] = [];
+        if (errorCount > 0) parts.push(`${errorCount} error(s)`);
+        if (warningCount > 0) parts.push(`${warningCount} warning(s)`);
+        log(`❌ Found ${parts.join(' and ')}`);
+      }
+      log(`⏱️  Total time: ${totalTime}ms`);
+    }
+
+    return {
+      diagnostics,
+      errorCount,
+      warningCount,
+      duration: totalTime,
+    };
+  }
+
+  // Merge diagnostics from both workers
+  const allDiagnostics = [
+    ...typeCheckResult.diagnostics,
+    ...(compilerResult?.diagnostics ?? []),
+  ];
+
+  const { errorCount, warningCount } = countDiagnostics(allDiagnostics);
+
+  const result: CheckResult = {
+    diagnostics: allDiagnostics,
+    errorCount,
+    warningCount,
+    duration: totalTime,
+  };
+
+  if (!quiet) {
+    if (allDiagnostics.length > 0) {
+      log('📋 Diagnostics:\n');
+      printDiagnostics(allDiagnostics, config.rootDir);
+    }
+
+    printSummary(result);
+    log(
+      `   (typeCheck: ${typeCheckResult.duration}ms, svelteWarnings: ${compilerResult?.duration ?? 0}ms)`
+    );
+  }
+
+  return result;
+}

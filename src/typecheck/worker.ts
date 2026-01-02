@@ -1,0 +1,111 @@
+/**
+ * TypeCheck Worker
+ *
+ * Pipeline: svelte2tsx -> tsgo -> filter -> map
+ */
+
+import { parentPort } from 'worker_threads';
+import { spawnSync } from 'child_process';
+import { createRequire } from 'module';
+import type { FastCheckConfig, WorkerOutput } from '../types';
+import {
+  convertAllSvelteFiles,
+  convertChangedFiles,
+  buildSourcemapMap,
+  generateTsconfig,
+} from './convert';
+import { parseTscOutput } from './parser';
+import { filterFalsePositives, loadTsxContents, extractTsxFiles } from './filter';
+import { mapDiagnostics, filterNegativeLines } from './mapper';
+
+const require = createRequire(import.meta.url);
+
+/** TypeCheck worker input */
+export interface TypeCheckInput {
+  config: FastCheckConfig;
+  incremental: boolean;
+  raw: boolean;
+}
+
+/** TypeCheck worker output */
+export type TypeCheckOutput = WorkerOutput;
+
+function getTsgoPath(): string {
+  try {
+    const nativePreviewPath = require.resolve('@typescript/native-preview/package.json');
+    const packageDir = nativePreviewPath.replace('/package.json', '');
+    return `${packageDir}/bin/tsgo.js`;
+  } catch {
+    return 'tsgo';
+  }
+}
+
+async function run(input: TypeCheckInput): Promise<TypeCheckOutput> {
+  const { config, incremental, raw } = input;
+  const startTime = performance.now();
+
+  try {
+    // Step 1: svelte2tsx conversion
+    const results = incremental
+      ? await convertChangedFiles(config)
+      : await convertAllSvelteFiles(config);
+
+    // Step 2: Generate tsconfig & run tsgo
+    const tsconfigPath = await generateTsconfig(config, { incremental });
+    const tsgoPath = getTsgoPath();
+    const tscResult = spawnSync('node', [tsgoPath, '--noEmit', '-p', tsconfigPath], {
+      cwd: config.rootDir,
+      encoding: 'utf-8',
+    });
+
+    if (tscResult.error) {
+      throw new Error(`tsgo execution failed: ${tscResult.error.message}`);
+    }
+
+    // Step 3: Parse results
+    const output = (tscResult.stdout ?? '') + (tscResult.stderr ?? '');
+    let diagnostics = parseTscOutput(output);
+    diagnostics = diagnostics.map((d) => ({ ...d, source: 'ts' as const }));
+
+    // Raw mode: skip filter/map, return tsgo output as-is
+    if (raw) {
+      return {
+        diagnostics: diagnostics.map((d) => ({
+          ...d,
+          originalFile: d.file,
+          originalLine: d.line,
+          originalColumn: d.column,
+        })),
+        duration: Math.round(performance.now() - startTime),
+      };
+    }
+
+    // Step 4: Filter false positives
+    const tsxFiles = extractTsxFiles(diagnostics);
+    const tsxContents = loadTsxContents(tsxFiles, config.rootDir);
+    diagnostics = filterFalsePositives(diagnostics, tsxContents);
+
+    // Step 5: Sourcemap mapping
+    const sourcemaps = buildSourcemapMap(results);
+    const cacheDir = config.cacheDir || '.fast-check';
+    let mapped = mapDiagnostics(diagnostics, sourcemaps, config.rootDir, tsxContents, cacheDir);
+    mapped = filterNegativeLines(mapped);
+
+    return {
+      diagnostics: mapped,
+      duration: Math.round(performance.now() - startTime),
+    };
+  } catch (e) {
+    return {
+      diagnostics: [],
+      duration: Math.round(performance.now() - startTime),
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
+}
+
+// Worker message handler
+parentPort?.on('message', async (input: TypeCheckInput) => {
+  const result = await run(input);
+  parentPort?.postMessage(result);
+});

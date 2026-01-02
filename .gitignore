@@ -27,3 +27,6 @@ CONTEXT.md
 # Lock files
 package-lock.json
 # bun.lockb
+
+# Benchmark
+benchmark/

@@ -4,7 +4,7 @@
  * Parses tsc stdout into a Diagnostic array.
  */
 
-import type { Diagnostic } from './types';
+import type { Diagnostic } from '../types';
 
 /**
  * Parse tsc output

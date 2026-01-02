@@ -110,3 +110,10 @@ export interface FastCheckConfig {
   /** @types packages to include (empty array disables auto-loading) */
   types?: string[];
 }
+
+/** Common worker output */
+export interface WorkerOutput {
+  diagnostics: MappedDiagnostic[];
+  duration: number;
+  error?: string;
+}

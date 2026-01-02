@@ -16,4 +16,16 @@ export default defineConfig([
       js: '#!/usr/bin/env node',
     },
   },
+  // TypeCheck Worker
+  {
+    entry: ['src/typecheck/worker.ts'],
+    format: ['esm'],
+    outDir: 'dist/typecheck',
+  },
+  // Compiler Worker
+  {
+    entry: ['src/compiler/worker.ts'],
+    format: ['esm'],
+    outDir: 'dist/compiler',
+  },
 ]);

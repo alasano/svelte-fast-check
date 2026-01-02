@@ -7,10 +7,10 @@
 
 import { compile } from 'svelte/compiler';
 import { readFile, writeFile, mkdir } from 'fs/promises';
-import { existsSync, statSync, readFileSync } from 'fs';
+import { existsSync, statSync, readFileSync, mkdirSync } from 'fs';
 import { resolve, dirname, relative } from 'path';
 import { globSync } from 'glob';
-import type { FastCheckConfig, MappedDiagnostic, SvelteWarning } from './types';
+import type { FastCheckConfig, MappedDiagnostic, SvelteWarning } from '../types';
 
 /** Cache directory for warnings */
 const WARNINGS_DIR = 'warnings';
@@ -29,7 +29,7 @@ function ensureWarningsCacheDir(config: FastCheckConfig): void {
   const warningsDir = resolve(config.rootDir, cacheRoot, WARNINGS_DIR);
 
   if (!existsSync(warningsDir)) {
-    require('fs').mkdirSync(warningsDir, { recursive: true });
+    mkdirSync(warningsDir, { recursive: true });
   }
 }
 
@@ -63,17 +63,20 @@ function warningToDiagnostic(warning: SvelteWarning, rootDir: string): MappedDia
     ? relative(rootDir, warning.filename)
     : warning.filename;
 
+  // Svelte compiler returns 0-based columns, convert to 1-based for consistency with tsc
+  const column = warning.start.column + 1;
+
   return {
     file: relativePath,
     line: warning.start.line,
-    column: warning.start.column,
+    column,
     code: 0, // Svelte warnings don't have numeric codes
     message: warning.message,
     severity: 'warning',
     source: 'svelte',
     originalFile: relativePath,
     originalLine: warning.start.line,
-    originalColumn: warning.start.column,
+    originalColumn: column,
   };
 }
 
@@ -144,10 +147,9 @@ export async function collectChangedSvelteWarnings(
         warnings,
       };
       
+      // Create cache directory (ignore EEXIST for race condition with Promise.all)
       const cacheDir = dirname(cachePath);
-      if (!existsSync(cacheDir)) {
-        await mkdir(cacheDir, { recursive: true });
-      }
+      await mkdir(cacheDir, { recursive: true }).catch(() => {});
       await writeFile(cachePath, JSON.stringify(cacheData));
 
       return warnings.map((w) => warningToDiagnostic(w, config.rootDir));
