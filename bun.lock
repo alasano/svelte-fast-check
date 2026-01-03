@@ -6,7 +6,7 @@
       "name": "svelte-fast-check",
       "dependencies": {
         "@jridgewell/trace-mapping": "^0.3.25",
-        "@typescript/native-preview": "^7.0.0-dev.20260102.1",
+        "@typescript/native-preview": "^7.0.0-dev.20251229.1",
         "glob": "^11.0.0",
         "svelte2tsx": "^0.7.34",
       },

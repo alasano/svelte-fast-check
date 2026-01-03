@@ -446,45 +446,28 @@ function readTypesFromTsconfig(
 }
 
 /**
- * Get svelte file patterns from tsconfig.json include
- * Falls back to default patterns if not specified
- */
-export function getSvelteFilePatterns(rootDir: string): string[] {
-  const tsconfig = readTypesFromTsconfig(rootDir);
-  
-  if (tsconfig?.include) {
-    // Filter only .svelte patterns from include
-    const sveltePatterns = tsconfig.include.filter(
-      (pattern) => pattern.includes('.svelte') || pattern.endsWith('.svelte')
-    );
-    
-    if (sveltePatterns.length > 0) {
-      return sveltePatterns;
-    }
-  }
-  
-  // Default: look in src directory (SvelteKit convention)
-  return ['src/**/*.svelte'];
-}
-
-/**
- * Find all svelte files based on tsconfig include patterns
+ * Find all svelte files based on tsconfig include patterns.
+ * Reads include patterns from tsconfig.json and falls back to src/**\/*.svelte.
  */
 export function findSvelteFiles(config: FastCheckConfig): string[] {
-  const patterns = getSvelteFilePatterns(config.rootDir);
   const tsconfig = readTypesFromTsconfig(config.rootDir);
-  const exclude = tsconfig?.exclude || [];
-  
-  const files: string[] = [];
-  
-  for (const pattern of patterns) {
-    const matches = globSync(pattern, { 
-      cwd: config.rootDir,
-      ignore: [...exclude, '**/node_modules/**'],
-    });
-    files.push(...matches);
+
+  // Extract .svelte patterns from tsconfig, or use default
+  let patterns = ['src/**/*.svelte'];
+  if (tsconfig?.include) {
+    const sveltePatterns = tsconfig.include.filter((pattern) => pattern.includes('.svelte'));
+    if (sveltePatterns.length > 0) {
+      patterns = sveltePatterns;
+    }
   }
-  
-  // Remove duplicates and return
+
+  const exclude = tsconfig?.exclude || [];
+
+  // Use single globSync call with pattern array for better performance
+  const files = globSync(patterns, {
+    cwd: config.rootDir,
+    ignore: [...exclude, '**/node_modules/**'],
+  });
+
   return [...new Set(files)];
 }
