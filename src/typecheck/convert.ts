@@ -310,7 +310,13 @@ export async function generateTsconfig(
     '$lib/*': ['./../src/lib/*'],
   };
   // Priority: config.paths > tsconfig paths > defaults
-  const paths = { ...defaultPaths, ...tsconfigPaths, ...config.paths };
+  // Also add '*' path for module resolution (replaces baseUrl in tsgo)
+  const paths = {
+    '*': ['./../node_modules/*', './../*'],
+    ...defaultPaths,
+    ...tsconfigPaths,
+    ...config.paths,
+  };
 
   // Generate tsconfig for fast-check
   // Override only necessary settings on top of project tsconfig's compilerOptions
@@ -338,9 +344,10 @@ export async function generateTsconfig(
       // Use defaults if lib is not specified
       lib: projectTsconfig?.compilerOptions?.lib || ['esnext', 'DOM', 'DOM.Iterable'],
 
-      // Prevent @types/react's global.d.ts from polluting DOM types
-      // Explicitly set types to disable @types/* auto-loading
-      types: config.types ?? [],
+      // Use project's types if specified, otherwise use config.types
+      // This ensures @types/* packages are properly loaded
+      types:
+        config.types ?? (projectTsconfig?.compilerOptions?.types as string[] | undefined),
     },
 
     // svelte2tsx shims + app.d.ts for DOM type overrides
