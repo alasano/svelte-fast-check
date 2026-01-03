@@ -10,7 +10,7 @@ import { svelte2tsx } from 'svelte2tsx';
 import { statSync, mkdirSync, existsSync, unlinkSync, readFileSync } from 'fs';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { globSync } from 'glob';
-import { resolve, dirname, relative } from 'path';
+import { resolve, dirname, relative, basename } from 'path';
 import { createRequire } from 'module';
 import type { ConversionResult, FastCheckConfig, SourceMapData } from '../types';
 
@@ -418,12 +418,10 @@ function resolvePatterns(
   if (!patterns) return undefined;
 
   return patterns.map((pattern) => {
-    // If pattern starts with ../ or ./, resolve it relative to patternBaseDir
-    if (pattern.startsWith('../') || pattern.startsWith('./')) {
-      const absolutePath = resolve(patternBaseDir, pattern);
-      return relative(rootDir, absolutePath);
-    }
-    return pattern;
+    // All non-absolute paths in tsconfig are relative to the file's directory.
+    // Resolve to absolute path, then make relative to rootDir for glob.
+    const absolutePath = resolve(patternBaseDir, pattern);
+    return relative(rootDir, absolutePath);
   });
 }
 
@@ -449,7 +447,7 @@ function readTypesFromTsconfig(
     if (tsconfig.extends) {
       const extendsPath = resolve(currentDir, tsconfig.extends);
       const parentDir = dirname(extendsPath);
-      const parentFileName = extendsPath.split('/').pop() || 'tsconfig.json';
+      const parentFileName = basename(extendsPath);
 
       const parentTsconfig = readTypesFromTsconfig(rootDir, parentFileName, parentDir);
       if (parentTsconfig) {

@@ -408,7 +408,12 @@ function isInComponentPropCallback(content: string, d: Diagnostic): boolean {
  */
 function isAssetImport(message: string): boolean {
   const assetExtensions = ['.avif', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico'];
-  return assetExtensions.some((ext) => message.includes(ext));
+  const match = message.match(/Cannot find module '([^']*)'/);
+  if (!match?.[1]) {
+    return false;
+  }
+  const modulePath = match[1];
+  return assetExtensions.some((ext) => modulePath.endsWith(ext));
 }
 
 /**
