@@ -66,7 +66,7 @@ function deriveProjectPaths(tsconfigPath: string): {
   const absolutePath = resolve(process.cwd(), tsconfigPath);
 
   if (!existsSync(absolutePath)) {
-    throw new CliError(`tsconfig.json not found at ${absolutePath}`);
+    throw new CliError(`--project: tsconfig.json not found at ${absolutePath}`);
   }
 
   // rootDir is the directory containing tsconfig.json

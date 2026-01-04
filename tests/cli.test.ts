@@ -46,6 +46,7 @@ describe("CLI", () => {
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("svelte-fast-check");
+      expect(result.stdout).toContain("--project");
       expect(result.stdout).toContain("--config");
       expect(result.stdout).toContain("--incremental");
     });
