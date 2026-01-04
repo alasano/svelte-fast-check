@@ -33,6 +33,9 @@ const DEFAULT_CACHE_ROOT = ".fast-check";
 const TSX_DIR = "tsx";
 const MAPS_DIR = "maps";
 
+/** Module resolution strategies that need override to bundler */
+const MODULE_RESOLUTIONS_NEEDING_OVERRIDE = ["nodenext", "node16"];
+
 function getCacheRoot(config: FastCheckConfig): string {
   return config.cacheDir || DEFAULT_CACHE_ROOT;
 }
@@ -368,7 +371,9 @@ export async function generateTsconfig(
   const moduleResolution = projectTsconfig?.compilerOptions?.moduleResolution;
   const needsModuleResolutionOverride =
     typeof moduleResolution === "string" &&
-    ["nodenext", "node16"].includes(moduleResolution.toLowerCase());
+    MODULE_RESOLUTIONS_NEEDING_OVERRIDE.includes(
+      moduleResolution.toLowerCase(),
+    );
 
   // Generate tsconfig for fast-check
   // Override only necessary settings on top of project tsconfig's compilerOptions
