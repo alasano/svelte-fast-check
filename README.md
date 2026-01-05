@@ -2,7 +2,11 @@
 
 Up to 24x faster type and Svelte compiler warning checker for Svelte/SvelteKit projects.
 
-[한국어](./README.ko.md)
+[Korean](./README.ko.md)
+
+## Status
+
+Experimental — depends on [TypeScript 7 (tsgo)](https://github.com/microsoft/typescript-go) preview. But actively used by the author in production.
 
 ## Why svelte-fast-check?
 
@@ -98,6 +102,13 @@ Two pipelines run in parallel:
 
 Both results are merged and displayed together.
 
+### What Gets Checked
+
+- **TypeScript errors** in `.ts` and `.svelte` files
+- **Svelte compiler warnings** — unused CSS, a11y hints, `state_referenced_locally`, etc.
+
+**Not included:** CSS language service diagnostics — use [eslint-plugin-svelte](https://github.com/sveltejs/eslint-plugin-svelte) or [Biome](https://biomejs.dev/) (v2.3.11+)
+
 ## Design
 
 ### Where the Time Goes
@@ -151,8 +162,8 @@ For these features, use `svelte-check` or `svelte-language-server`.
 
 ## Limitations
 
-- **tsgo is still in preview** - Experimental feature under development by the TypeScript team. Use with caution in production CI.
-- **Some false positives may occur** - We filter false positives, but the implementation differs from svelte-check and is not yet perfect.
+- **tsgo is still in preview.**
+- **False positives** - Known cases are handled. If you find more, please [open an issue](https://github.com/astralhpi/svelte-fast-check/issues).
 
 ## Using with svelte-check
 

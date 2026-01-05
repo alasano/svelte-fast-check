@@ -1,6 +1,8 @@
 # svelte-fast-check
 
-`svelte-check`보다 최대 24배 빠른 타입 및 Svelte 컴파일러 경고 체커.
+`svelte-check`보다 최대 24배 빠른 타입 및 Svelte 컴파일러 경고 체커입니다.
+
+> svelte-check와 동일한 svelte2tsx, svelte/compiler를 사용합니다. 제작자가 프로덕션에서 직접 사용하고 있습니다.
 
 [English](./README.md)
 
@@ -98,6 +100,13 @@ export default {
 
 결과를 합쳐서 출력합니다.
 
+### 체크 범위
+
+- **TypeScript 에러** — `.ts`, `.svelte` 파일
+- **Svelte 컴파일러 경고** — unused CSS, a11y 힌트, `state_referenced_locally` 등
+
+**미포함:** CSS 언어 서비스 진단. [eslint-plugin-svelte](https://github.com/sveltejs/eslint-plugin-svelte)나 [Biome](https://biomejs.dev/) (v2.3.11+)을 쓰세요.
+
 ## 설계
 
 ### 시간 분석
@@ -151,8 +160,8 @@ tsgo    svelte/compiler   ← 둘 다 캐시 사용
 
 ## 제한사항
 
-- **tsgo는 아직 preview** - TypeScript 팀이 개발 중입니다. 프로덕션 CI에서는 주의가 필요합니다.
-- **일부 false positive 가능** - 오탐을 필터링하지만, svelte-check와 구현이 일치하지는 않아, 아직 완벽하진 않습니다.
+- **tsgo는 아직 preview 입니다.**
+- **False positive** - 발견한 케이스는 대응해뒀습니다. 추가로 발견하면 [이슈](https://github.com/astralhpi/svelte-fast-check/issues) 남겨주세요.
 
 ## svelte-check와 함께 사용하기
 
