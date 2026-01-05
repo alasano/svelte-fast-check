@@ -1,34 +1,28 @@
 # svelte-fast-check
 
-Up to 24x faster type checker for Svelte/SvelteKit projects. Built with svelte2tsx + tsgo.
+Up to 24x faster type and Svelte compiler warning checker for Svelte/SvelteKit projects.
 
 [한국어](./README.ko.md)
 
-## Requirements
+## Why svelte-fast-check?
 
-- **Node.js 22+** (uses native `fs.glob`)
-- Svelte 5+
-- TypeScript 5+
+Two things make `svelte-check` slow for development:
 
-## Motivation
+1. **No incremental check** - Re-checks everything on every run
+2. **tsc is slow** - Single-threaded, no parallelism
 
-As my project grew, `svelte-check` became slow. I wanted to try incremental builds and typescript-go.
+We fix both:
 
-`svelte-check` has a lot to consider - Language Server compatibility, cross-platform support, and more - so adopting experimental features like tsgo isn't easy. Official support will take time, so I built this to use in the meantime.
+| Problem | Solution |
+|---------|----------|
+| No incremental | [tsgo](https://github.com/microsoft/typescript-go) supports incremental check |
+| tsc is slow | tsgo is 5-10x faster (Go-based, parallel) |
 
-See also:
-
-- [Incremental build support request](https://github.com/sveltejs/language-tools/issues/2131) (2023~)
-- [typescript-go support request](https://github.com/sveltejs/language-tools/issues/2733) (Blocked)
+Everything else stays the same - we use the same svelte2tsx and svelte/compiler as svelte-check.
 
 ## Benchmark
 
-Measured on Watnee's melting project, M4 Pro.
-
-**Project size:**
-
-- Svelte: 282 files (63k lines)
-- TypeScript: 741 files (119k lines)
+Measured on a 282-file Svelte project (M4 Pro):
 
 | Command                                  | Time  | Comparison      |
 | ---------------------------------------- | ----- | --------------- |
@@ -37,7 +31,11 @@ Measured on Watnee's melting project, M4 Pro.
 | `svelte-fast-check --incremental` (cold) | 6.0s  | 2.4x faster     |
 | `svelte-fast-check --incremental` (warm) | 0.6s  | **24x faster**  |
 
-> In warm state, type checking completes in 0.6 seconds - fast enough to run on every save.
+## Requirements
+
+- **Node.js 22+**
+- Svelte 5+
+- TypeScript 5+
 
 ## Installation
 
@@ -100,22 +98,39 @@ Two pipelines run in parallel:
 
 Both results are merged and displayed together.
 
-### Cache Structure
+## Design
+
+### Where the Time Goes
+
+On a 282-file Svelte project, svelte-fast-check takes ~2.6s (cold):
 
 ```
-.fast-check/
-├── tsx/           # converted .svelte.tsx files
-├── maps/          # sourcemap files
-├── warnings/      # cached svelte compiler warnings (JSON)
-├── tsconfig.json  # generated tsconfig
-└── .tsbuildinfo   # tsgo incremental build info
+svelte2tsx (~640ms)
+    ↓
+┌───┴───┐
+tsgo    svelte/compiler   ← runs in parallel
+(~2000ms)  (~700ms)
+└───┬───┘
+    ↓
+~2600ms
 ```
 
-## Non-Goals
+The speedup comes from:
+1. **tsgo** - 5-10x faster than tsc (Go-based, parallel, incremental)
+2. **Parallel execution** - Type checking and svelte/compiler run simultaneously
 
-`svelte-fast-check` focuses on fast type checking and compiler warnings. The following features are not supported:
+**Why keep svelte2tsx and svelte/compiler?**
 
-- **Language Server** - IDE autocompletion, hover info, go to definition, etc.
+Rewriting the parser would only save ~640ms. Considering maintenance burden and stability, using the official tooling is better:
+- Same [svelte2tsx](https://github.com/sveltejs/language-tools/tree/master/packages/svelte2tsx) as svelte-check - guaranteed compatibility
+- New Svelte syntax (like Runes) works immediately by updating peer dependencies
+- Zero maintenance burden for parser updates
+
+### What We Don't Do
+
+`svelte-check` already handles these well. No need to reinvent:
+
+- **Language Server** - IDE features (autocompletion, hover, go to definition)
 - **Watch mode** - file change detection and auto-rerun
 
 For these features, use `svelte-check` or `svelte-language-server`.
@@ -123,7 +138,7 @@ For these features, use `svelte-check` or `svelte-language-server`.
 ## Limitations
 
 - **tsgo is still in preview** - Experimental feature under development by the TypeScript team. Use with caution in production CI.
-- **Some false positives may occur** - We filter false positives from svelte2tsx conversion, but it may not be perfect.
+- **Some false positives may occur** - We filter false positives, but the implementation differs from svelte-check and is not yet perfect.
 
 ## Using with svelte-check
 
@@ -138,9 +153,20 @@ We recommend using `svelte-fast-check` for fast feedback during development, and
 }
 ```
 
+## Motivation
+
+As my project grew, `svelte-check` became slow. I wanted to try incremental builds and typescript-go.
+
+`svelte-check` has a lot to consider - Language Server compatibility, cross-platform support, and more - so adopting experimental features like tsgo isn't easy. Official support will take time, so I built this to use in the meantime.
+
+See also:
+
+- [Incremental build support request](https://github.com/sveltejs/language-tools/issues/2131) (2023~)
+- [typescript-go support request](https://github.com/sveltejs/language-tools/issues/2733) (Blocked)
+
 ## Credits
 
-Built on [svelte2tsx](https://github.com/sveltejs/language-tools/tree/master/packages/svelte2tsx) and inspired by [svelte-check](https://github.com/sveltejs/language-tools/tree/master/packages/svelte-check) from [svelte-language-tools](https://github.com/sveltejs/language-tools).
+Built with [svelte2tsx](https://github.com/sveltejs/language-tools/tree/master/packages/svelte2tsx) from [svelte-language-tools](https://github.com/sveltejs/language-tools) and [Svelte compiler](https://github.com/sveltejs/svelte). Inspired by [svelte-check](https://github.com/sveltejs/language-tools/tree/master/packages/svelte-check).
 
 ## License
 

@@ -1,43 +1,41 @@
 # svelte-fast-check
 
-`svelte-check`보다 최대 24배 빠른 타입 체커입니다. svelte2tsx + tsgo 기반으로 동작합니다.
+`svelte-check`보다 최대 24배 빠른 타입 및 Svelte 컴파일러 경고 체커.
 
 [English](./README.md)
 
-## 요구사항
+## 왜 svelte-fast-check가 필요한가요?
 
-- **Node.js 22+** (native `fs.glob` 사용)
-- Svelte 5+
-- TypeScript 5+
+`svelte-check`가 개발 환경에서 느린 이유는 아래와 같습니다.
 
-## 모티베이션
+1. **Incremental 체크 미지원** - 매번 전체를 다시 체크합니다.
+2. **tsc가 느림** - 싱글 스레드, 병렬 처리 없음
 
-프로젝트가 커지니까 `svelte-check`가 느려졌습니다. incremental 빌드랑 typescript-go 로 개선해보고 싶어졌습니다.
+svelte-fast-check는 이 두가지 문제를 해결해서 타입 체크 시간을 비약적으로 향상시킵니다.
 
-`svelte-check`는 Language Server 호환성, 크로스 플랫폼 지원 등 신경 쓸 게 많아서 tsgo 같은 실험적 기능을 바로 도입하긴 어렵습니다. 공식 지원에는 시간이 걸릴 수 밖에 없어서, 그동안 쓸 수 있는 프로젝트로 만들었습니다.
+| 문제 | 해결 |
+|------|------|
+| Incremental 없음 | [tsgo](https://github.com/microsoft/typescript-go)는 incremental 체크 지원 |
+| tsc 느림 | tsgo는 5-10배 빠름 (Go 기반, 병렬) |
 
-참고:
-
-- [incremental 빌드 지원 요청](https://github.com/sveltejs/language-tools/issues/2131) (2023~)
-- [typescript-go 지원 요청](https://github.com/sveltejs/language-tools/issues/2733) (Blocked)
+svelte2tsx, svelte/compiler는 svelte-check와 동일한 패키지를 사용합니다.
 
 ## 벤치마크
 
-Watnee의 melting 프로젝트 기준, M4 Pro에서 측정했습니다.
+282개 Svelte 파일 프로젝트, M4 Pro 기준:
 
-**프로젝트 규모:**
-
-- Svelte: 282개 파일 (63k lines)
-- TypeScript: 741개 파일 (119k lines)
-
-| 항목                                     | 시간  | 비교          |
+| 명령어                                   | 시간  | 비교          |
 | ---------------------------------------- | ----- | ------------- |
 | `svelte-check`                           | 14.4s | baseline      |
-| `svelte-fast-check`                      | 2.6s  | **5.5x 빠름** |
-| `svelte-fast-check --incremental` (cold) | 6.0s  | 2.4x 빠름     |
-| `svelte-fast-check --incremental` (warm) | 0.6s  | **24x 빠름**  |
+| `svelte-fast-check`                      | 2.6s  | **5.5배 빠름** |
+| `svelte-fast-check --incremental` (cold) | 6.0s  | 2.4배 빠름    |
+| `svelte-fast-check --incremental` (warm) | 0.6s  | **24배 빠름** |
 
-> warm 상태에서는 0.6초만에 타입 체크가 완료되어, 저장할 때마다 실행해도 부담이 없습니다.
+## 요구사항
+
+- **Node.js 22+**
+- Svelte 5+
+- TypeScript 5+
 
 ## 설치
 
@@ -50,31 +48,31 @@ bun add -D svelte-fast-check
 ## 사용법
 
 ```bash
-# 기본 실행
+# 기본
 npx svelte-fast-check
 
 # Incremental 모드 (권장)
 npx svelte-fast-check --incremental
 
-# bun으로 실행하면 더 빠릅니다
+# bun이 더 빠릅니다
 bun svelte-fast-check --incremental
 ```
 
 ### CLI 옵션
 
-| 옵션                   | 단축 | 설명                                                       |
-| ---------------------- | ---- | ---------------------------------------------------------- |
-| `--incremental`        | `-i` | 변경된 파일만 변환하고, tsgo incremental 빌드를 사용합니다 |
-| `--project <path>`     | `-p` | tsconfig.json 경로를 지정합니다 (모노레포용)               |
-| `--no-svelte-warnings` |      | Svelte 컴파일러 경고를 건너뜁니다 (타입 체크만 실행)       |
-| `--raw`                | `-r` | 필터링/매핑 없이 원시 출력을 표시합니다                    |
-| `--config <path>`      | `-c` | 설정 파일 경로를 지정합니다                                |
+| 옵션                   | 단축 | 설명                                       |
+| ---------------------- | ---- | ------------------------------------------ |
+| `--incremental`        | `-i` | 변경된 파일만 변환, tsgo incremental 사용  |
+| `--project <path>`     | `-p` | tsconfig.json 경로 지정 (모노레포용)       |
+| `--no-svelte-warnings` |      | Svelte 컴파일러 경고 생략 (타입만 체크)    |
+| `--raw`                | `-r` | 필터링/매핑 없이 원시 출력                 |
+| `--config <path>`      | `-c` | 설정 파일 경로 지정                        |
 
 ## 설정
 
-대부분의 경우 설정 없이 동작합니다. `tsconfig.json`에서 `paths`와 `exclude`를 자동으로 읽어옵니다.
+대부분 설정 없이 동작합니다. `tsconfig.json`의 `paths`, `exclude`를 자동으로 읽습니다.
 
-커스텀 설정이 필요한 경우 `svelte-fast-check.config.ts` 파일을 생성하세요:
+커스텀 설정이 필요하면 `svelte-fast-check.config.ts` 파일을 만들면 됩니다.
 
 ```typescript
 import type { FastCheckConfig } from 'svelte-fast-check';
@@ -89,45 +87,62 @@ export default {
 
 ```
                     ┌─→ svelte2tsx → tsgo → filter → map ─────→┐
-.svelte 파일들 ─────┤                                          ├──→ 통합된 진단 결과
+.svelte 파일 ───────┤                                          ├──→ 진단 결과
                     └─→ svelte.compile (warnings) → filter ───→┘
 ```
 
-두 파이프라인이 병렬로 실행됩니다:
+두 파이프라인이 병렬로 동작합니다:
 
-1. **타입 체크**: svelte2tsx가 `.svelte`를 `.tsx`로 변환 후 tsgo가 타입 체크
-2. **컴파일러 경고**: `svelte.compile({ generate: false })`로 Svelte 전용 경고 수집
+1. **타입 체크**: svelte2tsx로 `.svelte` → `.tsx` 변환 후 tsgo로 체크
+2. **컴파일러 경고**: `svelte.compile({ generate: false })`로 Svelte 경고 수집
 
-두 결과를 병합하여 함께 출력합니다.
+결과를 합쳐서 출력합니다.
 
-### 캐시 구조
+## 설계
+
+### 시간 분석
+
+282개 Svelte 파일 프로젝트에서 svelte-fast-check는 ~2.6초가 걸립니다.(cold 기준)
 
 ```
-.fast-check/
-├── tsx/           # 변환된 .svelte.tsx 파일
-├── maps/          # sourcemap 파일
-├── warnings/      # 캐시된 svelte 컴파일러 경고 (JSON)
-├── tsconfig.json  # 생성된 tsconfig
-└── .tsbuildinfo   # tsgo incremental 빌드 정보
+svelte2tsx (~640ms)
+    ↓
+┌───┴───┐
+tsgo    svelte/compiler   ← 병렬
+(~2000ms)  (~700ms)
+└───┬───┘
+    ↓
+~2600ms
 ```
 
-## 목적이 아닌 것
+빨라지는 이유:
+1. **tsgo** - tsc보다 5-10배 빠름 (Go 기반, 병렬, incremental)
+2. **병렬 실행** - 타입 체크와 svelte/compiler 동시 실행
 
-`svelte-fast-check`는 빠른 타입 체크와 컴파일러 경고에 집중합니다. 다음 기능은 지원하지 않습니다:
+**왜 svelte2tsx, svelte/compiler는 그대로 쓰나요?**
 
-- **Language Server** - IDE 자동완성, hover 정보, go to definition 등
-- **Watch 모드** - 파일 변경 감지 및 자동 재실행
+파서를 새로 만들면 ~640ms 를 절약할 수 있습니다. 유지보수 부담과 안정성을 고려하면 공식 도구를 쓰는 게 낫습니다:
+- svelte-check와 동일한 [svelte2tsx](https://github.com/sveltejs/language-tools/tree/master/packages/svelte2tsx) 사용으로 호환성 보장
+- Svelte 새 문법(Runes 등)은 버전만 올리면 바로 지원
+- 파서 유지보수 부담 없음
 
-이런 기능이 필요하다면 `svelte-check`나 `svelte-language-server`를 사용하세요.
+### 지원하지 않는 기능
+
+아래 기능은 `svelte-check`가 이미 잘 지원하고 있어서 별도로 구현하지 않았습니다.
+
+- **Language Server** - IDE 기능 (자동완성, hover, go to definition)
+- **Watch 모드** - 파일 변경 감지, 자동 재실행
+
+이런 기능이 필요하면 `svelte-check`나 `svelte-language-server`를 사용하세요.
 
 ## 제한사항
 
-- **tsgo는 아직 preview 단계입니다** - TypeScript 팀에서 개발 중인 실험적 기능입니다. 프로덕션 CI에서는 주의해서 사용하세요.
-- **일부 false positive가 있을 수 있습니다** - svelte2tsx 변환 과정에서 발생하는 오탐지를 필터링하지만, 완벽하지 않을 수 있습니다.
+- **tsgo는 아직 preview** - TypeScript 팀이 개발 중입니다. 프로덕션 CI에서는 주의가 필요합니다.
+- **일부 false positive 가능** - 오탐을 필터링하지만, svelte-check와 구현이 일치하지는 않아, 아직 완벽하진 않습니다.
 
 ## svelte-check와 함께 사용하기
 
-개발 중에는 `svelte-fast-check`로 빠른 피드백을 받고, CI에서는 `svelte-check`로 정확한 검증을 하는 것을 권장합니다:
+개발 중에는 `svelte-fast-check`로 빠르게 피드백 받고, CI에서는 `svelte-check`로 정확하게 검증하는 것을 권장합니다.
 
 ```json
 {
@@ -138,9 +153,19 @@ export default {
 }
 ```
 
+## 만든 이유
+
+프로젝트가 커지면서 `svelte-check`가 느려졌습니다. incremental 체크와 typescript-go를 적용해보고 싶었습니다.
+
+`svelte-check`는 Language Server 호환성, 크로스 플랫폼 지원 등 고려할 게 많아서 tsgo 같은 실험적 기능을 바로 도입하기 어렵습니다. 공식 지원까지는 시간이 걸릴 테니, 그동안 사용할 수 있는 도구로 만들었습니다.
+
+참고:
+- [incremental 빌드 지원 요청](https://github.com/sveltejs/language-tools/issues/2131) (2023~)
+- [typescript-go 지원 요청](https://github.com/sveltejs/language-tools/issues/2733) (Blocked)
+
 ## 크레딧
 
-[svelte-language-tools](https://github.com/sveltejs/language-tools)의 [svelte2tsx](https://github.com/sveltejs/language-tools/tree/master/packages/svelte2tsx)와 [svelte-check](https://github.com/sveltejs/language-tools/tree/master/packages/svelte-check)를 기반으로 합니다.
+[svelte-language-tools](https://github.com/sveltejs/language-tools)의 [svelte2tsx](https://github.com/sveltejs/language-tools/tree/master/packages/svelte2tsx)와 [Svelte 컴파일러](https://github.com/sveltejs/svelte)를 사용했고, [svelte-check](https://github.com/sveltejs/language-tools/tree/master/packages/svelte-check)를 참고해서 만들었습니다.
 
 ## 라이선스
 
