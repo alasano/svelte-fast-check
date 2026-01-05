@@ -24,6 +24,13 @@ We fix both:
 
 Everything else stays the same - we use the same svelte2tsx and svelte/compiler as svelte-check.
 
+## What Gets Checked
+
+- **TypeScript errors** in `.ts` and `.svelte` files
+- **Svelte compiler warnings** — unused CSS, a11y hints, `state_referenced_locally`, etc.
+
+**Not included:** CSS language service diagnostics — use [eslint-plugin-svelte](https://github.com/sveltejs/eslint-plugin-svelte) or [Biome](https://biomejs.dev/) (v2.3.11+)
+
 ## Benchmark
 
 Measured on a 282-file Svelte project (M4 Pro):
@@ -101,13 +108,6 @@ Two pipelines run in parallel:
 2. **Compiler warnings**: `svelte.compile({ generate: false })` collects Svelte-specific warnings
 
 Both results are merged and displayed together.
-
-### What Gets Checked
-
-- **TypeScript errors** in `.ts` and `.svelte` files
-- **Svelte compiler warnings** — unused CSS, a11y hints, `state_referenced_locally`, etc.
-
-**Not included:** CSS language service diagnostics — use [eslint-plugin-svelte](https://github.com/sveltejs/eslint-plugin-svelte) or [Biome](https://biomejs.dev/) (v2.3.11+)
 
 ## Design
 

@@ -22,6 +22,13 @@ svelte-fast-check는 이 두가지 문제를 해결해서 타입 체크 시간�
 
 svelte2tsx, svelte/compiler는 svelte-check와 동일한 패키지를 사용합니다.
 
+## 체크 범위
+
+- **TypeScript 에러** — `.ts`, `.svelte` 파일
+- **Svelte 컴파일러 경고** — unused CSS, a11y 힌트, `state_referenced_locally` 등
+
+**미포함:** CSS 언어 서비스 진단. [eslint-plugin-svelte](https://github.com/sveltejs/eslint-plugin-svelte)나 [Biome](https://biomejs.dev/) (v2.3.11+)을 쓰세요.
+
 ## 벤치마크
 
 282개 Svelte 파일 프로젝트, M4 Pro 기준:
@@ -99,13 +106,6 @@ export default {
 2. **컴파일러 경고**: `svelte.compile({ generate: false })`로 Svelte 경고 수집
 
 결과를 합쳐서 출력합니다.
-
-### 체크 범위
-
-- **TypeScript 에러** — `.ts`, `.svelte` 파일
-- **Svelte 컴파일러 경고** — unused CSS, a11y 힌트, `state_referenced_locally` 등
-
-**미포함:** CSS 언어 서비스 진단. [eslint-plugin-svelte](https://github.com/sveltejs/eslint-plugin-svelte)나 [Biome](https://biomejs.dev/) (v2.3.11+)을 쓰세요.
 
 ## 설계
 
