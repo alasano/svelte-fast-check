@@ -4,6 +4,12 @@ Up to 24x faster type checker for Svelte/SvelteKit projects. Built with svelte2t
 
 [한국어](./README.ko.md)
 
+## Requirements
+
+- **Node.js 22+** (uses native `fs.glob`)
+- Svelte 5+
+- TypeScript 5+
+
 ## Motivation
 
 As my project grew, `svelte-check` became slow. I wanted to try incremental builds and typescript-go.
@@ -59,6 +65,7 @@ bun svelte-fast-check --incremental
 | Option                 | Short | Description                                            |
 | ---------------------- | ----- | ------------------------------------------------------ |
 | `--incremental`        | `-i`  | Convert only changed files, use tsgo incremental build |
+| `--project <path>`     | `-p`  | Specify tsconfig.json path (for monorepos)             |
 | `--no-svelte-warnings` |       | Skip Svelte compiler warnings (type check only)        |
 | `--raw`                | `-r`  | Show raw output without filtering/mapping              |
 | `--config <path>`      | `-c`  | Specify config file path                               |

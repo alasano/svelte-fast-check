@@ -4,6 +4,12 @@
 
 [English](./README.md)
 
+## 요구사항
+
+- **Node.js 22+** (native `fs.glob` 사용)
+- Svelte 5+
+- TypeScript 5+
+
 ## 모티베이션
 
 프로젝트가 커지니까 `svelte-check`가 느려졌습니다. incremental 빌드랑 typescript-go 로 개선해보고 싶어졌습니다.
@@ -59,6 +65,7 @@ bun svelte-fast-check --incremental
 | 옵션                   | 단축 | 설명                                                       |
 | ---------------------- | ---- | ---------------------------------------------------------- |
 | `--incremental`        | `-i` | 변경된 파일만 변환하고, tsgo incremental 빌드를 사용합니다 |
+| `--project <path>`     | `-p` | tsconfig.json 경로를 지정합니다 (모노레포용)               |
 | `--no-svelte-warnings` |      | Svelte 컴파일러 경고를 건너뜁니다 (타입 체크만 실행)       |
 | `--raw`                | `-r` | 필터링/매핑 없이 원시 출력을 표시합니다                    |
 | `--config <path>`      | `-c` | 설정 파일 경로를 지정합니다                                |
