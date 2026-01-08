@@ -63,15 +63,23 @@ async function loadSvelteConfig(
     const fileUrl = pathToFileURL(configPath).href;
     const module = await import(fileUrl);
     return module.default as SvelteConfig;
-  } catch {
+  } catch (e) {
+    // Warn user if config file exists but failed to load (e.g., syntax error)
+    const error = e as NodeJS.ErrnoException;
+    if (error.code !== "ERR_MODULE_NOT_FOUND") {
+      console.warn(
+        `[svelte-fast-check] Warning: Failed to load ${configPath}. It will be ignored.`,
+      );
+    }
     return null;
   }
 }
 
-/** Warning filter function type (same as svelte.config.js compilerOptions.warningFilter) */
+/** Warning filter function type (compatible with svelte.config.js compilerOptions.warningFilter) */
 export type WarningFilter = (warning: {
   code: string;
   message: string;
+  filename?: string;
 }) => boolean;
 
 export interface RunOptions {
@@ -250,7 +258,11 @@ export async function run(
       (d) =>
         d.source !== "svelte" ||
         !d.svelteCode ||
-        warningFilter({ code: d.svelteCode, message: d.message }),
+        warningFilter({
+          code: d.svelteCode,
+          message: d.message,
+          filename: d.originalFile,
+        }),
     );
   }
 
