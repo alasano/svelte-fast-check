@@ -3,6 +3,9 @@
   "version": "0.3.1",
   "description": "Up to 24x faster type and Svelte compiler warning checker for Svelte/SvelteKit projects using svelte2tsx + tsgo",
   "type": "module",
+  "workspaces": [
+    "tests/fixtures/*"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
@@ -20,6 +23,7 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
+    "typecheck": "tsc --noEmit",
     "prepare": "husky",
     "prepublishOnly": "npm run build"
   },

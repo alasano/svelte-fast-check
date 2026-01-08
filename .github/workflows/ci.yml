@@ -24,13 +24,9 @@ jobs:
           bun-version: latest
 
       - run: bun install
+      - run: bun run typecheck
       - run: bun run lint
       - run: bun run build
-      - name: Install test fixture dependencies
-        run: |
-          cd tests/fixtures/valid-project && bun install
-          cd ../error-project && bun install
-          cd ../store-error-project && bun install
       - run: bun run test
 
   publish:
@@ -41,18 +37,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
       - run: bun install
       - run: bun run build
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          registry-url: "https://registry.npmjs.org"
-
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
