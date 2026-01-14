@@ -76,8 +76,14 @@ async function run(input: TypeCheckInput): Promise<TypeCheckOutput> {
         reject(new Error(`tsgo execution failed: ${err.message}`));
       });
 
-      child.on("close", () => {
-        resolve(Buffer.concat(chunks).toString("utf-8"));
+      child.on("close", (code) => {
+        const output = Buffer.concat(chunks).toString("utf-8");
+        if (code !== 0 && output.trim() === "") {
+          return reject(
+            new Error(`tsgo execution failed with exit code ${code}.`),
+          );
+        }
+        resolve(output);
       });
     });
 
