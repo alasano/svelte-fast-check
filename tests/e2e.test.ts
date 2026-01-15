@@ -460,6 +460,13 @@ describe("svelte-fast-check E2E", () => {
       const moduleNotFoundErrors = resultWithAlias.diagnostics.filter(
         (d) => d.code === 2307, // TS2307: Cannot find module
       );
+      // Debug: print actual errors if any
+      if (moduleNotFoundErrors.length > 0) {
+        console.log(
+          "Module not found errors:",
+          moduleNotFoundErrors.map((d) => d.message),
+        );
+      }
       expect(moduleNotFoundErrors.length).toBe(0);
       expect(resultWithAlias.errorCount).toBe(0);
     });
