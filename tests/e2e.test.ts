@@ -410,4 +410,77 @@ describe("svelte-fast-check E2E", () => {
       expect(svelteWarnings.length).toBe(1);
     });
   });
+
+  describe("alias-project (svelte.config.js kit.alias)", () => {
+    const projectDir = resolve(fixturesDir, "alias-project");
+
+    afterAll(() => {
+      cleanupCache(projectDir);
+    });
+
+    test("should fail to resolve alias imports without svelte.config.js", async () => {
+      // Clean cache before run to avoid race conditions
+      cleanupCache(projectDir);
+
+      const config: FastCheckConfig = {
+        rootDir: projectDir,
+        srcDir: resolve(projectDir, "src"),
+      };
+
+      const result = await runFastCheck(config, {
+        quiet: true,
+        svelteWarnings: false,
+        useSvelteConfig: false,
+      });
+
+      // Without kit.alias, 'shared/types' import cannot be resolved
+      const moduleNotFoundErrors = result.diagnostics.filter(
+        (d) => d.code === 2307 && d.message.includes("shared"),
+      );
+      expect(moduleNotFoundErrors.length).toBeGreaterThan(0);
+    });
+
+    test("should resolve alias imports using kit.alias from svelte.config.js", async () => {
+      // Clean cache before run to avoid race conditions
+      cleanupCache(projectDir);
+
+      const config: FastCheckConfig = {
+        rootDir: projectDir,
+        srcDir: resolve(projectDir, "src"),
+      };
+
+      const result = await runFastCheck(config, {
+        quiet: true,
+        svelteWarnings: false,
+      });
+
+      // With kit.alias, alias imports should resolve without errors
+      const moduleNotFoundErrors = result.diagnostics.filter(
+        (d) => d.code === 2307, // TS2307: Cannot find module
+      );
+      expect(moduleNotFoundErrors.length).toBe(0);
+      expect(result.errorCount).toBe(0);
+    });
+
+    test("should resolve $lib alias alongside custom kit.alias", async () => {
+      // Clean cache before run to avoid race conditions
+      cleanupCache(projectDir);
+
+      const config: FastCheckConfig = {
+        rootDir: projectDir,
+        srcDir: resolve(projectDir, "src"),
+      };
+
+      const result = await runFastCheck(config, {
+        quiet: true,
+        svelteWarnings: false,
+      });
+
+      // $lib alias should also work (SvelteKit default)
+      const libErrors = result.diagnostics.filter(
+        (d) => d.code === 2307 && d.message.includes("$lib"),
+      );
+      expect(libErrors.length).toBe(0);
+    });
+  });
 });

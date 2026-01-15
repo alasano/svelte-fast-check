@@ -9,6 +9,7 @@ import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Worker } from "node:worker_threads";
+import { convertSvelteKitAlias } from "./alias";
 import type { CompilerInput, CompilerOutput } from "./compiler/worker";
 import {
   printDiagnostics,
@@ -28,6 +29,9 @@ const __dirname = dirname(__filename);
 interface SvelteConfig {
   compilerOptions?: {
     warningFilter?: WarningFilter;
+  };
+  kit?: {
+    alias?: Record<string, string>;
   };
 }
 
@@ -169,23 +173,45 @@ export async function run(
 
   log("🔍 svelte-fast-check: Starting type check...\n");
 
-  // Load warning filter from svelte.config.js (if enabled)
+  // Load svelte.config.js (if enabled) for warningFilter and kit.alias
   let warningFilter: WarningFilter | undefined = customWarningFilter;
+  let effectiveConfig = config;
 
-  if (!warningFilter && useSvelteConfig && svelteWarnings) {
+  if (useSvelteConfig) {
     const svelteConfig = await loadSvelteConfig(
       svelteConfigPath ?? config.rootDir,
     );
-    warningFilter = svelteConfig?.compilerOptions?.warningFilter;
+
+    // Load warning filter
+    if (!warningFilter && svelteWarnings) {
+      warningFilter = svelteConfig?.compilerOptions?.warningFilter;
+    }
+
+    // Load kit.alias and merge with config.paths
+    // Priority: config.paths > svelte.config alias
+    if (svelteConfig?.kit?.alias) {
+      const aliasPaths = convertSvelteKitAlias(svelteConfig.kit.alias);
+      effectiveConfig = {
+        ...config,
+        paths: {
+          ...aliasPaths,
+          ...config.paths, // config.paths takes precedence
+        },
+      };
+    }
   }
 
   // Resolve worker paths
   const typeCheckWorkerPath = getWorkerPath("typecheck");
   const compilerWorkerPath = getWorkerPath("compiler");
 
-  // Prepare worker inputs
-  const typeCheckInput: TypeCheckInput = { config, incremental, raw };
-  const compilerInput: CompilerInput = { config, incremental };
+  // Prepare worker inputs (use effectiveConfig with merged alias paths)
+  const typeCheckInput: TypeCheckInput = {
+    config: effectiveConfig,
+    incremental,
+    raw,
+  };
+  const compilerInput: CompilerInput = { config: effectiveConfig, incremental };
 
   // Run workers in parallel
   // In raw mode, skip compiler worker (only typecheck needed for debugging)
