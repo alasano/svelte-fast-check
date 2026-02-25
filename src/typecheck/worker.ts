@@ -35,7 +35,7 @@ const require = createRequire(import.meta.url);
  * path matches any `config.exclude` pattern, ensuring excluded files are
  * truly silenced.
  */
-function filterExcludedPaths(
+export function filterExcludedPaths(
   diagnostics: MappedDiagnostic[],
   excludePatterns: string[],
 ): MappedDiagnostic[] {
